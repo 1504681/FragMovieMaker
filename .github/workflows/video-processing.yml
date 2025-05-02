@@ -1,38 +1,4 @@
-- name: Create list of videos and prepare for processing
-        run: |
-          # Find video files and sort by creation time (support multiple formats)
-          find ./videos -type f \( -name "*.mp4" -o -name "*.mkv" \) -printf "%T@ %p\n" | sort -n | cut -f2- -d" " > temp_list.txt
-          
-          # Show found files
-          echo "Found these video files:"
-          cat temp_list.txt
-          
-          # Create a directory for extracted streams
-          mkdir -p extracted
-          
-          # Extract video streams from each MKV file to ensure compatibility
-          echo "Extracting video streams from MKV files:"
-          for video in videos/*.mkv; do
-            if [ -f "$video" ]; then
-              basename=$(basename "$video" .mkv)
-              echo "Processing $video..."
-              ffmpeg -v warning -i "$video" -c:v copy -an "extracted/${basename}.mp4" || echo "Failed to extract $video"
-            fi
-          done
-          
-          # Check extracted files
-          echo "Extracted files:"
-          ls -la extracted/
-          
-          # Create a list of the extracted files
-          find ./extracted -type f -name "*.mp4" | sort > extract_list.txt
-          
-          # Format for FFmpeg concat
-          sed 's/^/file /' extract_list.txt > video_list.txt
-          
-          # Show the order of processing
-          echo "Video files to be processed in chronological order:"
-          cat video_list.txtname: Video Processing Pipeline
+name: Video Processing Pipeline
 
 on:
   push:
@@ -76,6 +42,42 @@ jobs:
           for file in videos/*; do
             echo "$file: $(file -b "$file")"
           done
+      
+      - name: Create list of videos and prepare for processing
+        run: |
+          # Find video files and sort by creation time (support multiple formats)
+          find ./videos -type f \( -name "*.mp4" -o -name "*.mkv" \) -printf "%T@ %p\n" | sort -n | cut -f2- -d" " > temp_list.txt
+          
+          # Show found files
+          echo "Found these video files:"
+          cat temp_list.txt
+          
+          # Create a directory for extracted streams
+          mkdir -p extracted
+          
+          # Extract video streams from each MKV file to ensure compatibility
+          echo "Extracting video streams from MKV files:"
+          for video in videos/*.mkv; do
+            if [ -f "$video" ]; then
+              basename=$(basename "$video" .mkv)
+              echo "Processing $video..."
+              ffmpeg -v warning -i "$video" -c:v copy -an "extracted/${basename}.mp4" || echo "Failed to extract $video"
+            fi
+          done
+          
+          # Check extracted files
+          echo "Extracted files:"
+          ls -la extracted/
+          
+          # Create a list of the extracted files
+          find ./extracted -type f -name "*.mp4" | sort > extract_list.txt
+          
+          # Format for FFmpeg concat
+          sed 's/^/file /' extract_list.txt > video_list.txt
+          
+          # Show the order of processing
+          echo "Video files to be processed in chronological order:"
+          cat video_list.txt
       
       - name: Alternative processing if extraction worked
         run: |
