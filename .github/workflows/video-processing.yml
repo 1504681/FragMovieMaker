@@ -1,0 +1,72 @@
+name: Video Processing Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  process-videos:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Set up FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+      
+      - name: Create list of videos in chronological order
+        run: |
+          # Find video files and sort by creation time
+          find ./videos -type f -name "*.mp4" -printf "%T@ %p\n" | sort -n | cut -f2- -d" " > temp_list.txt
+          # Format for FFmpeg concat
+          sed 's/^/file /' temp_list.txt > video_list.txt
+          # Show the order of processing
+          echo "Video files to be processed in chronological order:"
+          cat video_list.txt
+      
+      - name: Concatenate videos
+        run: |
+          mkdir -p output
+          ffmpeg -f concat -safe 0 -i video_list.txt -c copy output/concatenated.mp4
+      
+      - name: Add music
+        run: |
+          ffmpeg -i output/concatenated.mp4 -i ./music/background.mp3 -map 0:v -map 1:a -c:v copy -shortest output/final_video.mp4
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: processed-video
+          path: output/final_video.mp4
+          retention-days: 5
+
+  deploy:
+    needs: process-videos
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: processed-video
+          path: ./processed-video
+      
+      - name: Set up deployment environment
+        run: echo "Setting up deployment environment"
+        
+      - name: Deploy video
+        run: |
+          echo "Deploying processed video to target platform"
+          # Add your deployment commands here
+          # Examples:
+          # - Upload to S3: aws s3 cp ./processed-video/final_video.mp4 s3://your-bucket/
+          # - Upload to YouTube: use youtube-upload or similar tool
+          
+      - name: Notify completion
+        run: echo "Video processing and deployment complete"
