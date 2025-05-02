@@ -22,10 +22,20 @@ jobs:
       
       - name: Create list of videos in chronological order
         run: |
-          # Find video files and sort by creation time
-          find ./videos -type f -name "*.mp4" -printf "%T@ %p\n" | sort -n | cut -f2- -d" " > temp_list.txt
+          # List all videos
+          echo "Listing all video files in videos directory:"
+          ls -la videos/
+          
+          # Find video files and sort by creation time (support multiple formats)
+          find ./videos -type f \( -name "*.mp4" -o -name "*.mkv" \) -printf "%T@ %p\n" | sort -n | cut -f2- -d" " > temp_list.txt
+          
+          # Show found files
+          echo "Found these video files:"
+          cat temp_list.txt
+          
           # Format for FFmpeg concat
           sed 's/^/file /' temp_list.txt > video_list.txt
+          
           # Show the order of processing
           echo "Video files to be processed in chronological order:"
           cat video_list.txt
@@ -33,11 +43,35 @@ jobs:
       - name: Concatenate videos
         run: |
           mkdir -p output
-          ffmpeg -f concat -safe 0 -i video_list.txt -c copy output/concatenated.mp4
+          
+          # Check if video_list.txt is empty
+          if [ ! -s video_list.txt ]; then
+            echo "Error: No videos found to concatenate"
+            exit 1
+          fi
+          
+          # Try to concatenate videos
+          ffmpeg -f concat -safe 0 -i video_list.txt -c copy output/concatenated.mkv
       
       - name: Add music
         run: |
-          ffmpeg -i output/concatenated.mp4 -i ./music/background.mp3 -map 0:v -map 1:a -c:v copy -shortest output/final_video.mp4
+          # Check if background.mp3 exists
+          if [ ! -f ./music/background.mp3 ]; then
+            echo "Warning: background.mp3 not found, looking for alternatives..."
+            ls -la ./music/
+            # Find first mp3 file in music directory
+            MUSIC_FILE=$(find ./music -name "*.mp3" | head -n 1)
+            if [ -z "$MUSIC_FILE" ]; then
+              echo "Error: No music file found"
+              exit 1
+            fi
+            echo "Using $MUSIC_FILE instead"
+          else
+            MUSIC_FILE="./music/background.mp3"
+          fi
+          
+          # Add music to video
+          ffmpeg -i output/concatenated.mkv -i "$MUSIC_FILE" -map 0:v -map 1:a -c:v copy -shortest output/final_video.mp4
       
       - name: Upload artifact
         uses: actions/upload-artifact@v4
