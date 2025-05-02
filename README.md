@@ -11,8 +11,6 @@ Automatically combine gameplay clips and add music.
 5. Wait for processing to complete
 6. Download your finished video from the Artifacts section
 
-That's it!
-
 ## What It Does
 
 - Puts your clips in order by creation date
